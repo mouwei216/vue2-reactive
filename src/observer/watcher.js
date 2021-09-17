@@ -1,6 +1,7 @@
 import { Observer } from './index';
 import { hasOwn, isObject, parsePath } from '../util/index';
 import Dep from './dep';
+import { traverse } from './traverse';
 
 let uid = 0;
 export default class Watcher {
@@ -29,7 +30,10 @@ export default class Watcher {
   newDeps;
   newDepIds;
 
-  constructor(vm, expOrFn, cb) {
+  // 监测给定数据时是否进行深度监测
+  deep;
+
+  constructor(vm, expOrFn, cb, options) {
     this.id = uid++;
     this.vm = vm;
     this.cb = cb;
@@ -38,6 +42,9 @@ export default class Watcher {
     this.depIds = new Set();
     this.newDeps = [];
     this.newDepIds = new Set();
+
+    this.options = options || {};
+    this.deep = !!this.options.deep;
 
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn;
@@ -58,6 +65,13 @@ export default class Watcher {
   get() {
     Dep.target = this;
     const value = this.getter.call(this.vm, this.vm);
+
+    // 要进行深度监测
+    if (this.deep) {
+      // 递归对value的每个属性进行取值操作以进行依赖收集
+      traverse(value);
+    }
+
     Dep.target = null;
 
     // 清除上轮用过但现在没用的依赖
