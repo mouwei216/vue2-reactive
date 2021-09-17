@@ -8,11 +8,17 @@ function Vue(options) {
 Vue.prototype._init = function (options) {
   const vm = this;
   vm.options = options;
+  vm._watchers = [];
+
   if (!options.data) {
     options.data = {};
   }
 
   initData(vm);
+
+  if (options.watch) {
+    initWatch(vm);
+  }
 
   if (options.render) {
     initRender(vm);
@@ -28,10 +34,20 @@ function initData(vm) {
   observe(data);
 }
 
+function initWatch(vm) {
+  const watch = vm.options.watch;
+  const keys = Object.keys(watch);
+  for (let exp of keys) {
+    const cb = watch[exp];
+    vm._watchers.push(new Watcher(vm, exp, cb));
+  }
+}
+
 function initRender(vm) {
   const render = vm.options.render;
   const w = new Watcher(vm, render);
   vm._watcher = w;
+  vm._watchers.push(w);
 }
 
 function proxy(target, source, key) {

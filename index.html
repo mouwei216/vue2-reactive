@@ -58,6 +58,18 @@
           age: 20,
           arr: [1, 2, 3],
         },
+        watch: {
+          firstname: function (value, oldValue) {
+            console.log(
+              `firstname发生变化了，执行监控回调函数: ${oldValue} --> ${value}`
+            );
+          },
+          age: function (value, oldValue) {
+            console.log(
+              `age发生变化了，执行监控回调函数: ${oldValue} --> ${value}`
+            );
+          },
+        },
       });
 
       console.log(vm);

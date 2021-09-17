@@ -1,5 +1,5 @@
 import { Observer } from './index';
-import { hasOwn, isObject } from '../util/index';
+import { hasOwn, isObject, parsePath } from '../util/index';
 import Dep from './dep';
 
 let uid = 0;
@@ -7,10 +7,16 @@ export default class Watcher {
   // 唯一标识
   id;
 
-  // 渲染页面操作函数是哪个组件的
+  // 组件实例，渲染页面、监测给定数据都是基于某个组件的
   vm;
 
-  // 渲染页面操作函数
+  // 渲染页面操作函数，或者是转化后的取值函数，因为需要取值所以命名为getter
+  getter;
+
+  // getter的返回值，一般来说渲染页面操作函数没有返回值，但监测给定数据时需要把最新值传给回调函数
+  value;
+
+  // getter执行完后需要执行的函数，一般来说渲染页面操作函数没有回调函数，但监测给定数据时肯定是有回调函数的
   cb;
 
   // 依赖
@@ -23,7 +29,7 @@ export default class Watcher {
   newDeps;
   newDepIds;
 
-  constructor(vm, cb) {
+  constructor(vm, expOrFn, cb) {
     this.id = uid++;
     this.vm = vm;
     this.cb = cb;
@@ -33,21 +39,40 @@ export default class Watcher {
     this.newDeps = [];
     this.newDepIds = new Set();
 
+    if (typeof expOrFn === 'function') {
+      this.getter = expOrFn;
+    } else {
+      // 转化为取值操作函数
+      this.getter = parsePath(expOrFn);
+    }
+
     // 创建watcher后，马上执行以进行依赖收集
-    this.run();
+    this.value = this.get();
   }
 
   update() {
     this.run();
   }
 
-  run() {
+  // 执行getter函数，并且开启依赖收集
+  get() {
     Dep.target = this;
-    this.cb.call(this.vm);
+    const value = this.getter.call(this.vm, this.vm);
     Dep.target = null;
 
     // 清除上轮用过但现在没用的依赖
     this.cleanupDeps();
+
+    return value;
+  }
+
+  run() {
+    const value = this.get();
+    const oldValue = this.value;
+    this.value = value;
+    if (value !== oldValue) {
+      this.cb.call(this.vm, value, oldValue);
+    }
   }
 
   // 收集依赖(订阅发布者)
