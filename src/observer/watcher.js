@@ -1,5 +1,10 @@
 import { Observer } from './index';
-import { hasOwn, isObject, parsePath } from '../util/index';
+import {
+  hasOwn,
+  invokeWithErrorHandling,
+  isObject,
+  parsePath,
+} from '../util/index';
 import Dep from './dep';
 import { traverse } from './traverse';
 
@@ -33,6 +38,9 @@ export default class Watcher {
   // 监测给定数据时是否进行深度监测
   deep;
 
+  // 是否要对cb函数进行错误处理
+  user;
+
   constructor(vm, expOrFn, cb, options) {
     this.id = uid++;
     this.vm = vm;
@@ -45,6 +53,7 @@ export default class Watcher {
 
     this.options = options || {};
     this.deep = !!this.options.deep;
+    this.user = !!this.options.user;
 
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn;
@@ -84,8 +93,13 @@ export default class Watcher {
     const value = this.get();
     const oldValue = this.value;
     this.value = value;
-    if (value !== oldValue) {
-      this.cb.call(this.vm, value, oldValue);
+
+    if (value !== oldValue || this.deep) {
+      if (this.user) {
+        invokeWithErrorHandling(this.cb, vm, value, oldValue);
+      } else {
+        this.cb.call(this.vm, value, oldValue);
+      }
     }
   }
 
