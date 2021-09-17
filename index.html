@@ -12,26 +12,42 @@
       <br />
       <input id="lastname" type="text" />
       <button onclick="changeLastname()">修改lastname</button>
+      <br />
+      <input id="age" type="text" />
+      <button onclick="changeAge()">修改age</button>
     </div>
     <script src="./index.js"></script>
     <script>
       const firstnameInput = document.querySelector('#firstname');
       const lastnameInput = document.querySelector('#lastname');
+      const ageInput = document.querySelector('#age');
 
       function changeFirstname() {
-        data.firstname = firstnameInput.value;
+        me.firstname = firstnameInput.value;
       }
 
       function changeLastname() {
-        data.lastname = lastnameInput.value;
+        me.lastname = lastnameInput.value;
       }
 
-      const data = {
-        firstname: 'Mouwei',
-        lastname: 'Mok',
-      };
+      function changeAge() {
+        me.age = ageInput.value;
+      }
 
-      observe(data);
+      function render() {
+        console.log(`开始渲染页面。。。。。。。。。。`);
+        console.log(`firstname: ${this.firstname}, lastname: ${this.lastname}`);
+        console.log(`页面渲染完成。。。。。。。。。。`);
+      }
+
+      const me = {
+        firstname: 'Haaaaa',
+        lastname: 'AAAAAAAAA',
+        age: 20,
+      };
+      observe(me);
+      me._watcher = new Watcher(me, render);
+      console.log(me);
     </script>
   </body>
 </html>

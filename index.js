@@ -70,10 +70,14 @@ methodsToPatch.forEach(function (method) {
         break;
     }
 
-    // 需要对新插入的数据进行观测
-    if (inserted) this.__ob__.observeArray(inserted);
+    const ob = this.__ob__;
 
-    console.log('修改了数组，重新渲染页面吧');
+    // 需要对新插入的数据进行观测
+    if (inserted) ob.observeArray(inserted);
+
+    // console.log('修改了数组，重新渲染页面吧');
+    ob.dep.notify();
+
     return result;
   });
 });
@@ -82,7 +86,11 @@ const arrayKeys = Object.getOwnPropertyNames(arrayMethods);
 
 // 这个类负责对一数据进行观测
 class Observer {
+  dep;
+
   constructor(value) {
+    this.dep = new Dep();
+
     def(value, '__ob__', this);
 
     if (Array.isArray(value)) {
@@ -121,6 +129,9 @@ class Observer {
 // 把obj的key属性设置为响应式的
 // 或者为obj添加一个key属性，并且把这个key属性也设置成响应式的
 function defineReactive(obj, key, val) {
+  // 为每个属性都定义一个Dep，用到这个属性的watcher都会被收集到这个Dep的subs中
+  const dep = new Dep();
+
   const propertyDescriptor = Object.getOwnPropertyDescriptor(obj, key);
   // obj的key属性不可以重新配置就别瞎搞了
   if (propertyDescriptor && propertyDescriptor.configurable === false) {
@@ -134,13 +145,33 @@ function defineReactive(obj, key, val) {
   }
 
   // 如果obj的key属性的值也是个对象，则继续对它的属性进行设置
-  observe(val);
+  let ob = observe(val);
 
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
     get: function reactiveGetter() {
       const value = getter ? getter.call(obj) : val;
+
+      // 如果Dep.target存在，则说是现在需要进行依赖收集
+      if (Dep.target) {
+        Dep.target.depend(dep);
+
+        // 有ob说明当前属性的值是一个对象或数组
+        // 如果一个属性的值是对象或数组，则ob中的dep代表的是对象或数组的结构变化dep
+        // 结构变化对应于：
+        //   对象：添加属性/删除属性
+        //   数组：插入数组项/删除数组项/改变数组项顺序
+        if (ob) {
+          // 收集结构变化dep
+          Dep.target.depend(ob.dep);
+
+          // 如果一个属性的值是数组, 还需要递归收集数组每一项的结构变化dep
+          if (Array.isArray(value)) {
+            Dep.target.dependArray(value);
+          }
+        }
+      }
 
       return value;
     },
@@ -160,9 +191,10 @@ function defineReactive(obj, key, val) {
       }
 
       // 如果新设置的值没有被观测过则要对其进行观测
-      observe(newVal);
+      ob = observe(newVal);
 
-      console.log('设置了新值，数据发变化了，重新渲染页面吧');
+      // console.log('设置了新值，数据发变化了，重新渲染页面吧');
+      dep.notify();
     },
   });
 }
@@ -211,15 +243,18 @@ function set(target, key, val) {
     return;
   }
 
+  const ob = target.__ob__;
+
   // target没有观测过，那就直接添加
-  if (!target.__ob__) {
+  if (!ob) {
     target[key] = val;
     return;
   }
 
   defineReactive(target, key, val);
 
-  console.log('修改了属性，渲染页面吧');
+  // console.log('修改了属性，渲染页面吧');
+  ob.dep.notify();
 }
 
 // 删除target的key属性
@@ -235,15 +270,20 @@ function del(target, key) {
 
   delete target[key];
 
-  if (!target.__ob__) {
+  const ob = target.__ob__;
+  if (!ob) {
     return;
   }
 
-  console.log('删除了属性，渲染页面吧');
+  // console.log('删除了属性，渲染页面吧');
+  ob.dep.notify();
 }
 
 let depUid = 0;
 class Dep {
+  // 静态变量，全局唯一，存放当前收集依赖的watcher
+  static target;
+
   // 唯一标识
   id;
 
@@ -315,10 +355,22 @@ class Watcher {
     this.depIds = new Set();
     this.newDeps = [];
     this.newDepIds = new Set();
+
+    // 创建watcher后，马上执行以进行依赖收集
+    this.run();
   }
 
   update() {
+    this.run();
+  }
+
+  run() {
+    Dep.target = this;
     this.cb.call(this.vm);
+    Dep.target = null;
+
+    // 清除上轮用过但现在没用的依赖
+    this.cleanupDeps();
   }
 
   // 收集依赖(订阅发布者)
@@ -338,6 +390,23 @@ class Watcher {
     dep.addSub(this);
   }
 
+  // 递归收集数组的每一项的结构变化dep
+  dependArray(arr) {
+    for (let item of arr) {
+      if (!isObject(item)) {
+        continue;
+      }
+
+      if (hasOwn(item, '__ob__') && item.__ob__ instanceof Observer) {
+        this.depend(item.__ob__.dep);
+      }
+
+      if (Array.isArray(item)) {
+        this.dependArray(item);
+      }
+    }
+  }
+
   // 清除上轮用过但现在没用的依赖
   cleanupDeps() {
     // 对于旧的dep，在新的上面找，如果没找到则说明新一轮不再依赖这个旧dep
@@ -346,11 +415,6 @@ class Watcher {
         dep.removeSub(this);
       }
     }
-
-    // this.deps = this.newDeps;
-    // this.depIds = this.newDepIds;
-    // this.newDeps = [];
-    // this.newDepIds = new Set();
 
     // 新旧交换，并清空新的，比上面的快
     let tmp = this.depIds;
