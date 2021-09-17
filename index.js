@@ -48,8 +48,9 @@ function defineReactive(obj, key, val) {
     return;
   }
 
-  // 如果是新添加的key，propertyDescriptor为undefined
-  if (propertyDescriptor) {
+  const getter = propertyDescriptor && propertyDescriptor.get;
+  const setter = propertyDescriptor && propertyDescriptor.set;
+  if ((!getter || setter) && arguments.length === 2) {
     val = obj[key];
   }
 
@@ -60,14 +61,24 @@ function defineReactive(obj, key, val) {
     enumerable: true,
     configurable: true,
     get: function reactiveGetter() {
-      return val;
+      const value = getter ? getter.call(obj) : val;
+
+      return value;
     },
     set: function reactiveSetter(newVal) {
+      const value = getter ? getter.call(obj) : val;
+
       // 新旧值都一样就别瞎搞了吧
-      if (newVal === val || (newVal !== newVal && val !== val)) {
+      if (newVal === value || (newVal !== newVal && value !== value)) {
         return;
       }
-      val = newVal;
+
+      if (getter && !setter) return;
+      if (setter) {
+        setter.call(obj, newVal);
+      } else {
+        val = newVal;
+      }
 
       // 如果新设置的值没有被观测过则要对其进行观测
       observe(newVal);
