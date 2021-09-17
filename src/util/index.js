@@ -48,5 +48,5 @@ export function parsePath(path) {
 
 export function invokeWithErrorHandling(fn, ctx, ...arg) {
   // 自己去实现
-  fn.call(vm, ...arg);
+  fn.call(ctx, ...arg);
 }
