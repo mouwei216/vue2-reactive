@@ -15,39 +15,52 @@
       <br />
       <input id="age" type="text" />
       <button onclick="changeAge()">修改age</button>
+      <br />
+      <input id="arrAdd" type="text" />
+      <button onclick="arrAdd()">数组添加一项</button>
     </div>
-    <script src="./index.js"></script>
+    <script src="./dist/vue.js"></script>
     <script>
       const firstnameInput = document.querySelector('#firstname');
       const lastnameInput = document.querySelector('#lastname');
       const ageInput = document.querySelector('#age');
+      const arrAddInput = document.querySelector('#arrAdd');
 
       function changeFirstname() {
-        me.firstname = firstnameInput.value;
+        vm.firstname = firstnameInput.value;
       }
 
       function changeLastname() {
-        me.lastname = lastnameInput.value;
+        vm.lastname = lastnameInput.value;
       }
 
       function changeAge() {
-        me.age = ageInput.value;
+        vm.age = ageInput.value;
+      }
+
+      function arrAdd() {
+        vm.arr.push(arrAddInput.value);
       }
 
       function render() {
+        console.log('\r\n');
         console.log(`开始渲染页面。。。。。。。。。。`);
         console.log(`firstname: ${this.firstname}, lastname: ${this.lastname}`);
+        console.log(`arr: ${JSON.stringify(this.arr)}`);
         console.log(`页面渲染完成。。。。。。。。。。`);
       }
 
-      const me = {
-        firstname: 'Haaaaa',
-        lastname: 'AAAAAAAAA',
-        age: 20,
-      };
-      observe(me);
-      me._watcher = new Watcher(me, render);
-      console.log(me);
+      const vm = new Vue({
+        render,
+        data: {
+          firstname: 'HXK',
+          lastname: 'dksafl',
+          age: 20,
+          arr: [1, 2, 3],
+        },
+      });
+
+      console.log(vm);
     </script>
   </body>
 </html>
