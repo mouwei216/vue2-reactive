@@ -5,7 +5,7 @@ import {
   isObject,
   parsePath,
 } from '../util/index';
-import Dep from './dep';
+import Dep, { popTarget, pushTarget } from './dep';
 import { traverse } from './traverse';
 
 let uid = 0;
@@ -41,6 +41,12 @@ export default class Watcher {
   // 是否要对cb函数进行错误处理
   user;
 
+  // 标识是lazy watcher
+  lazy;
+
+  // 标识lazy watcher的依赖有没变化
+  dirty;
+
   constructor(vm, expOrFn, cb, options) {
     this.id = uid++;
     this.vm = vm;
@@ -54,6 +60,8 @@ export default class Watcher {
     this.options = options || {};
     this.deep = !!this.options.deep;
     this.user = !!this.options.user;
+    this.lazy = !!this.options.lazy;
+    this.dirty = this.lazy;
 
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn;
@@ -62,17 +70,25 @@ export default class Watcher {
       this.getter = parsePath(expOrFn);
     }
 
-    // 创建watcher后，马上执行以进行依赖收集
-    this.value = this.get();
+    // 开始收集依赖
+    // this.value = this.get();
+    // layz watcher不能马上执行
+    this.value = this.lazy ? undefined : this.get();
   }
 
   update() {
-    this.run();
+    // lazy watcher在依赖变化时只设置dirty标识
+    if (this.lazy) {
+      this.dirty = true;
+    } else {
+      this.run();
+    }
   }
 
   // 执行getter函数，并且开启依赖收集
   get() {
-    Dep.target = this;
+    // 当前watcher入栈
+    pushTarget(this);
     const value = this.getter.call(this.vm, this.vm);
 
     // 要进行深度监测
@@ -81,10 +97,17 @@ export default class Watcher {
       traverse(value);
     }
 
-    Dep.target = null;
+    // 当前watcher出栈
+    popTarget();
 
     // 清除上轮用过但现在没用的依赖
     this.cleanupDeps();
+
+    // 当前watcher出栈后，如果Dep.target还有值，则说明Dep.target中的watcher依赖于当前watcher
+    // 要让其收集当前watcher的所有依赖
+    if (Dep.target) {
+      Dep.target.dependWatcher(this);
+    }
 
     return value;
   }
@@ -101,6 +124,16 @@ export default class Watcher {
         this.cb.call(this.vm, value, oldValue);
       }
     }
+  }
+
+  // 获取lazy watcher的目标属性的值
+  evaluate() {
+    if (this.dirty) {
+      this.value = this.get();
+      this.dirty = false;
+    }
+
+    return this.value;
   }
 
   // 收集依赖(订阅发布者)
@@ -134,6 +167,13 @@ export default class Watcher {
       if (Array.isArray(item)) {
         this.dependArray(item);
       }
+    }
+  }
+
+  // 收集依赖watcher的所有依赖
+  dependWatcher(watcher) {
+    for (let dep of watcher.deps) {
+      this.depend(dep);
     }
   }
 

@@ -3,6 +3,10 @@ export function isObject(value) {
   return value !== null && typeof value === 'object';
 }
 
+export function isPlainObject(obj) {
+  return Object.prototype.toString.call(obj) === '[object Object]';
+}
+
 // 把一个key以数据描述符的形式定义到obj上
 export function def(obj, key, val, enumerable) {
   Object.defineProperty(obj, key, {
@@ -50,3 +54,6 @@ export function invokeWithErrorHandling(fn, ctx, ...arg) {
   // 自己去实现
   fn.call(ctx, ...arg);
 }
+
+// 空操作函数
+export function noop() {}

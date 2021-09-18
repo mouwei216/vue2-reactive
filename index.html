@@ -16,15 +16,19 @@
       <input id="age" type="text" />
       <button onclick="changeAge()">修改age</button>
       <br />
-      <input id="arrAdd" type="text" />
-      <button onclick="arrAdd()">数组添加一项</button>
+      <input id="province" type="text" />
+      <button onclick="changeProvince()">修改addr.province</button>
+      <br />
+      <input id="city" type="text" />
+      <button onclick="changeCity()">修改addr.city</button>
     </div>
     <script src="./dist/vue.js"></script>
     <script>
       const firstnameInput = document.querySelector('#firstname');
       const lastnameInput = document.querySelector('#lastname');
       const ageInput = document.querySelector('#age');
-      const arrAddInput = document.querySelector('#arrAdd');
+      const provinceInput = document.querySelector('#province');
+      const cityInput = document.querySelector('#city');
 
       function changeFirstname() {
         vm.firstname = firstnameInput.value;
@@ -38,15 +42,18 @@
         vm.age = ageInput.value;
       }
 
-      function arrAdd() {
-        vm.arr.push(arrAddInput.value);
+      function changeProvince() {
+        vm.addr.province = provinceInput.value;
+      }
+
+      function changeCity() {
+        vm.addr.city = cityInput.value;
       }
 
       function render() {
         console.log('\r\n');
         console.log(`开始渲染页面。。。。。。。。。。`);
-        console.log(`firstname: ${this.firstname}, lastname: ${this.lastname}`);
-        console.log(`arr: ${JSON.stringify(this.arr)}`);
+        console.log(`fullname: ${this.fullname}`);
         console.log(`页面渲染完成。。。。。。。。。。`);
       }
 
@@ -56,18 +63,22 @@
           firstname: 'HXK',
           lastname: 'dksafl',
           age: 20,
-          arr: [1, 2, 3],
+          addr: {
+            province: 'GD',
+            city: 'SZ',
+          },
+        },
+        computed: {
+          fullname() {
+            return `${this.firstname} ${this.lastname}`;
+          },
         },
         watch: {
-          firstname: function (value, oldValue) {
-            console.log(
-              `firstname发生变化了，执行监控回调函数: ${oldValue} --> ${value}`
-            );
-          },
-          age: function (value, oldValue) {
-            console.log(
-              `age发生变化了，执行监控回调函数: ${oldValue} --> ${value}`
-            );
+          addr: {
+            handler(value, oldValue) {
+              console.log(`addr发生变化了：${JSON.stringify(this.addr)}`);
+            },
+            deep: true,
           },
         },
       });
